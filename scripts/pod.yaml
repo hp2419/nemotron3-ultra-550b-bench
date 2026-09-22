@@ -1,0 +1,74 @@
+# Benchmark pod: 8 GPUs on one node, model weights and workspace on separate PVCs.
+# Adjust namespace, nodeSelector and storageClassName for your cluster.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nemotron-models
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: lvms-vg1
+  resources:
+    requests:
+      storage: 900Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bench-workspace
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: lvms-vg1
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nemotron-bench
+  labels:
+    app: nemotron-bench
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    nvidia.com/gpu.product: NVIDIA-H200
+  containers:
+    - name: vllm
+      image: vllm/vllm-openai:latest
+      command: ["sleep", "infinity"]
+      ports:
+        - containerPort: 8000
+      env:
+        - name: HF_HOME
+          value: /models/hf
+        - name: HF_XET_HIGH_PERFORMANCE
+          value: "1"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef: {name: hf-token, key: token, optional: true}
+      resources:
+        limits:
+          nvidia.com/gpu: 8
+      volumeMounts:
+        - {name: models,    mountPath: /models}
+        - {name: workspace, mountPath: /workspace}
+        - {name: dshm,      mountPath: /dev/shm}
+  volumes:
+    - name: models
+      persistentVolumeClaim: {claimName: nemotron-models}
+    - name: workspace
+      persistentVolumeClaim: {claimName: bench-workspace}
+    - name: dshm
+      emptyDir: {medium: Memory, sizeLimit: 64Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nemotron-bench
+spec:
+  selector:
+    app: nemotron-bench
+  ports:
+    - port: 8000
+      targetPort: 8000
