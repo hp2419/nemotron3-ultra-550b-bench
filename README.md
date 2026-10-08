@@ -3,7 +3,7 @@
 Interactive-serving tuning study for `RedHatAI/NVIDIA-Nemotron-3-Ultra-550B-A55B-FP8-dynamic`
 on a single 8xH200 node (TP8, expert parallel), targeting low TTFT and low inter-token latency.
 
-Engine: upstream `vllm/vllm-openai:latest` (vLLM 0.29.0, torch 2.13.0+cu130).
+Engine: upstream `vllm/vllm-openai:latest`
 Benchmark: guidellm, synthetic text.
 
 ## Headline result
