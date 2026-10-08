@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nemotron-3-Ultra-550B on 8xH200</title>
+<style>
+  :root{color-scheme:light;
+    --page:#f9f9f7; --surface:#fcfcfb; --raised:#f2f1ed;
+    --ink:#0b0b0b; --ink2:#52514e; --ink3:#898781;
+    --line:rgba(11,11,11,.10); --line2:rgba(11,11,11,.20);
+    --grid:#e1e0d9; --axis:#c3c2b7;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+    --good:#006300; --bad:#b03030;
+    --chipbg:rgba(11,11,11,.05); --chipon:#0b0b0b; --chipontext:#fcfcfb;
+    --track:rgba(11,11,11,.07);}
+  @media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --raised:#232322;
+    --ink:#fff; --ink2:#c3c2b7; --ink3:#898781;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.22);
+    --grid:#2c2c2a; --axis:#383835;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --good:#0ca30c; --bad:#e66767;
+    --chipbg:rgba(255,255,255,.07); --chipon:#fcfcfb; --chipontext:#0b0b0b;
+    --track:rgba(255,255,255,.09);}}
+  :root[data-theme="dark"]{color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --raised:#232322;
+    --ink:#fff; --ink2:#c3c2b7; --ink3:#898781;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.22);
+    --grid:#2c2c2a; --axis:#383835;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --good:#0ca30c; --bad:#e66767;
+    --chipbg:rgba(255,255,255,.07); --chipon:#fcfcfb; --chipontext:#0b0b0b;
+    --track:rgba(255,255,255,.09);}
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--page);color:var(--ink);
+       font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 80px}
+
+  .themebtn{position:fixed;top:14px;right:14px;z-index:50;background:var(--surface);
+    color:var(--ink2);border:1px solid var(--line2);border-radius:999px;padding:6px 13px;
+    font:inherit;font-size:12.5px;cursor:pointer}
+  .themebtn:hover{color:var(--ink)}
+
+  /* hero */
+  header{padding:56px 0 34px}
+  h1{font-size:clamp(26px,4.6vw,36px);line-height:1.15;margin:0 0 12px;font-weight:650;
+    letter-spacing:-.02em}
+  .sub{font-size:17px;color:var(--ink2);margin:0 0 28px;max-width:52ch}
+  .herostat{display:flex;flex-wrap:wrap;gap:26px 40px;padding:22px 0 0;border-top:1px solid var(--line)}
+  .hs{min-width:128px}
+  .hs .k{font-size:12px;color:var(--ink3);margin-bottom:7px}
+  .hs .v{font-size:27px;font-weight:650;letter-spacing:-.02em;line-height:1}
+  .hs .v small{font-size:14px;font-weight:500;color:var(--ink2);margin-left:2px}
+  .hs .d{font-size:12px;color:var(--ink2);margin-top:7px}
+  .hs .d b{color:var(--good)}
+
+  /* timeline */
+  .steps{position:relative;margin:14px 0 0;padding-left:34px}
+  .steps:before{content:"";position:absolute;left:11px;top:16px;bottom:16px;width:2px;
+    background:var(--grid)}
+  .step{position:relative;margin-bottom:12px}
+  .node{position:absolute;left:-34px;top:16px;width:24px;height:24px;border-radius:50%;
+    background:var(--surface);border:2px solid var(--grid);color:var(--ink3);
+    display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;
+    z-index:1;transition:border-color .15s,color .15s}
+  .step.on .node{border-color:var(--nc,var(--axis));color:var(--nc,var(--ink))}
+
+  .sumbtn{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;padding:16px 18px;font:inherit;cursor:pointer;display:flex;
+    align-items:center;gap:14px;transition:border-color .15s,background .15s}
+  .sumbtn:hover{border-color:var(--line2)}
+  .step.on .sumbtn{border-color:var(--line2);border-bottom-left-radius:0;border-bottom-right-radius:0;
+    border-bottom-color:transparent}
+  .sumtxt{flex:1;min-width:0}
+  .sumtitle{font-size:16.5px;font-weight:650;letter-spacing:-.01em;display:flex;
+    align-items:center;gap:9px;flex-wrap:wrap}
+  .sumtitle .tag{font-size:11px;font-weight:600;letter-spacing:.02em;padding:2.5px 8px;
+    border-radius:5px;background:var(--chipbg);color:var(--ink2);white-space:nowrap}
+  .sumtitle .tag.chg{background:var(--nc);color:#fff;opacity:.92}
+  .sumline{font-size:14px;color:var(--ink2);margin-top:5px}
+  .chev{flex:none;width:18px;height:18px;color:var(--ink3);transition:transform .18s}
+  .step.on .chev{transform:rotate(90deg)}
+
+  .body{display:none;background:var(--surface);border:1px solid var(--line2);border-top:0;
+    border-radius:0 0 12px 12px;padding:4px 18px 22px}
+  .step.on .body{display:block}
+
+  .lbl{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);
+    font-weight:650;margin:22px 0 10px}
+
+  /* flag diff */
+  .flags{display:flex;flex-direction:column;gap:7px}
+  .flag{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:13.5px;
+    background:var(--raised);border-radius:8px;padding:9px 12px}
+  .flag code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;
+    color:var(--ink);font-weight:600}
+  .flag .was{color:var(--ink3);text-decoration:line-through}
+  .flag .now{color:var(--ink);font-weight:600}
+  .flag .arrow{color:var(--ink3)}
+  .flag .why{color:var(--ink2);font-size:12.5px;margin-left:auto}
+  .flag.same{opacity:.62}
+
+  /* metric comparison rows */
+  .mrows{display:flex;flex-direction:column;gap:16px;margin-top:4px}
+  .mrow .mhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+    margin-bottom:8px}
+  .mrow .mname{font-size:13.5px;color:var(--ink)}
+  .mrow .mname span{color:var(--ink3);font-size:12.5px}
+  .mrow .mdelta{font-size:13px;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .mdelta.up{color:var(--good)} .mdelta.dn{color:var(--bad)} .mdelta.flat{color:var(--ink3)}
+  .bar{display:grid;grid-template-columns:116px 1fr 86px;align-items:center;gap:10px;
+    margin-bottom:5px;font-size:12.5px}
+  .bar .who{color:var(--ink3);font-size:12px;line-height:1.3}
+  .bar .track{height:12px;background:var(--track);border-radius:3px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:3px}
+  .bar .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);
+    white-space:nowrap}
+
+  /* mini table */
+  .tscroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--raised)}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{padding:8px 13px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);font-weight:650}
+  tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  tbody th{font-weight:600;color:var(--ink)}
+  td.na{color:var(--ink3)}
+  tr.same td{color:var(--s1)}
+
+  .takeaway{display:flex;gap:11px;align-items:flex-start;margin-top:22px;padding:14px 15px;
+    background:var(--raised);border-radius:10px;border-left:3px solid var(--nc,var(--axis))}
+  .takeaway .tk{font-size:14.5px;color:var(--ink);line-height:1.5}
+  .takeaway .tk b{font-weight:650}
+
+  pre{background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+    overflow-x:auto;font-size:12px;line-height:1.55;margin:0}
+  pre code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  /* conclusion */
+  .final{margin-top:40px;border:1px solid var(--line2);border-radius:14px;
+    background:var(--surface);padding:28px 24px 26px}
+  .final h2{margin:0 0 6px;font-size:22px;font-weight:650;letter-spacing:-.015em}
+  .final .fsub{color:var(--ink2);margin:0 0 22px;font-size:15px}
+  .recs{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(248px,1fr))}
+  .rec{border:1px solid var(--line);border-radius:11px;padding:17px 17px 15px;background:var(--raised)}
+  .rec .rt{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);
+    font-weight:650;margin-bottom:9px}
+  .rec .rc{font-size:17px;font-weight:650;margin-bottom:11px;display:flex;align-items:center;gap:8px}
+  .rec .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .rec ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--ink2)}
+  .rec li{margin-bottom:5px}
+  .rec code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink)}
+
+  details.data{margin-top:34px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  details.data>summary{cursor:pointer;padding:15px 18px;font-size:14.5px;font-weight:600;
+    color:var(--ink2);list-style:none}
+  details.data>summary::-webkit-details-marker{display:none}
+  details.data>summary:before{content:"▸ ";color:var(--ink3)}
+  details.data[open]>summary:before{content:"▾ "}
+  details.data .dbody{padding:0 18px 20px}
+  details.data h4{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);
+    font-weight:650;margin:18px 0 9px}
+
+  footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);
+    font-size:12.5px;color:var(--ink3);max-width:70ch}
+
+  @media (max-width:560px){
+    .steps{padding-left:26px}
+    .steps:before{left:8px}
+    .node{left:-26px;width:19px;height:19px;font-size:10px}
+    .bar{grid-template-columns:78px 1fr 74px;gap:7px;font-size:11.5px}
+    .bar .who{font-size:10.5px}
+    .flag .why{margin-left:0;width:100%}
+    .sumbtn{padding:14px 15px}
+    .body{padding:4px 15px 20px}
+  }
+  @media print{.themebtn{display:none} .body{display:block!important} details.data{display:none}}
+</style>
+</head>
+<body>
+<button class="themebtn" id="themeBtn" type="button">Dark</button>
+<div class="wrap">
+<header>
+  <h1>Nemotron-3-Ultra-550B on 8&times;H200</h1>
+  <p class="sub">vLLM tuning for interactive serving. Two flags changed, measured step by step.</p>
+  <div class="herostat" id="hero"></div>
+</header>
+
+<div class="steps" id="steps"></div>
+
+<div class="final">
+  <h2>Where we landed</h2>
+  <p class="fsub">The right setting depends on the traffic. One value is correct for short
+     requests and wrong for long ones.</p>
+  <div class="recs">
+    <div class="rec">
+      <div class="rt">Short / interactive traffic</div>
+      <div class="rc"><span class="dot" style="background:var(--s4)"></span>320 seqs + MTP k=2</div>
+      <ul>
+        <li><code>--max-num-seqs 320</code></li>
+        <li><code>--speculative-config</code> mtp, k=2</li>
+        <li><code>--mamba-cache-mode align</code></li>
+        <li>3,328 tok/s &middot; 1.2 s first token at 300 users</li>
+      </ul>
+    </div>
+    <div class="rec">
+      <div class="rt">Long-context traffic</div>
+      <div class="rc"><span class="dot" style="background:var(--s2)"></span>MTP k=2, limit at 128</div>
+      <ul>
+        <li><code>--max-num-seqs 128</code></li>
+        <li><code>--speculative-config</code> mtp, k=2</li>
+        <li><code>--mamba-cache-mode align</code></li>
+        <li>Matches the 320 setting below 300 users, beats it at 300</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<details class="data">
+  <summary>All measurements</summary>
+  <div class="dbody" id="allData"></div>
+</details>
+
+<footer>
+  Prompts were synthetic fixed-length text, so throughput and latency figures are independent of
+  prompt content. Serve scripts, the benchmark driver and raw run output are in the accompanying
+  repository.
+</footer>
+
+</div>
+<script>
+window.STORY = {
+  hero: [
+    { k:"First token at 300 users", v:"1,184", u:"ms", d:"was 14,964 ms", good:"−92%" },
+    { k:"Output at 300 users",      v:"3,328", u:"tok/s", d:"baseline peak 2,593", good:"+28%" },
+    { k:"Flags changed",            v:"2",     u:"", d:"batch limit, speculative decoding" }
+  ],
+
+  steps: [
+    {
+      n:1, color:"var(--s1)", title:"Where we started", tag:"Baseline", tagType:"plain",
+      line:"Stock config. 512-token prompts, 256 out, swept 8 to 300 users.",
+      flags:[ {f:"--max-num-seqs", now:"128", why:"stock"} ],
+      table:{
+        head:["Users","First token","Output"],
+        rows:[["8","397 ms","553 tok/s"],["128","1,541 ms","2,593 tok/s"],["300","14,964 ms","—"]]
+      },
+      takeaway:"At 300 users a request waits <b>15 seconds</b> before its first token. That is the problem to solve."
+    },
+    {
+      n:2, color:"var(--s1)", title:"A strange reading", tag:"No change made", tagType:"plain",
+      line:"On long prompts, 128 users and 300 users gave the same answer.",
+      table:{
+        head:["Users","Output","Inter-token","Completed in 900 s"],
+        rows:[["128","2,136.2 tok/s","50.9 ms","385"],["300","2,136.4 tok/s","50.5 ms","385"]],
+        mark:true
+      },
+      takeaway:"Adding 172 more users changed <b>nothing</b>. If the GPUs were the limit, each step would have slowed. They didn't — so the batch never grew past the 128 we set."
+    },
+    {
+      n:3, color:"var(--s2)", title:"First try: speculative decoding", tag:"MTP k=2", tagType:"chg",
+      line:"Predict 2 tokens ahead, verify them in one pass.",
+      flags:[
+        {f:"--speculative-config", now:"mtp, 2 draft tokens", why:"added"},
+        {f:"--mamba-cache-mode", now:"align", why:"required with MTP"},
+        {f:"--max-num-seqs", now:"128", why:"unchanged", same:true}
+      ],
+      metrics:[
+        {name:"Inter-token latency", sub:"long prompts, 8 users", base:12.4, now:6.7, unit:"ms", lower:true},
+        {name:"Output throughput", sub:"long prompts, 8 users", base:582, now:1116, unit:"tok/s", lower:false},
+        {name:"First token", sub:"short prompts, 128 users", base:1541, now:513, unit:"ms", lower:true},
+        {name:"First token", sub:"short prompts, 300 users", base:14964, now:14423, unit:"ms", lower:true}
+      ],
+      takeaway:"Big gains at low load. But at 300 users the wait barely moved — <b>15 s to 14.4 s</b>. The queue is still there."
+    },
+    {
+      n:4, color:"var(--s3)", title:"Second try: let more requests run at once", tag:"320 seqs", tagType:"chg",
+      line:"Raise the running-batch limit. One flag.",
+      flags:[ {f:"--max-num-seqs", was:"128", now:"320", why:"changed"} ],
+      metrics:[
+        {name:"First token", sub:"short prompts, 300 users", base:14964, now:1600, unit:"ms", lower:true},
+        {name:"Output throughput", sub:"short prompts, 300 users", base:2593, now:3073, unit:"tok/s", lower:false,
+         baseLabel:"Baseline peak"},
+        {name:"Inter-token latency", sub:"short prompts, 300 users", base:44.3, now:87.5, unit:"ms", lower:true,
+         baseLabel:"At 128 users"}
+      ],
+      table:{
+        head:["Users","Output","Inter-token"],
+        rows:[["128","2,551 tok/s","44.3 ms"],["200","2,901 tok/s","61.4 ms"],["300","3,073 tok/s","87.5 ms"]]
+      },
+      takeaway:"Throughput now keeps climbing past 128 users, where the baseline had flatlined. The wait drops <b>15 s to 1.6 s</b>. Streaming gets slower — that's the trade."
+    },
+    {
+      n:5, color:"var(--s4)", title:"Both together", tag:"320 seqs + MTP k=2", tagType:"chg",
+      line:"The two changes stack.", cmpLabel:"Comparison",
+      flags:[
+        {f:"--max-num-seqs", was:"128", now:"320", why:"changed"},
+        {f:"--speculative-config", now:"mtp, 2 draft tokens", why:"added"},
+        {f:"--mamba-cache-mode", now:"align", why:"required with MTP"}
+      ],
+      metrics:[
+        {name:"First token", sub:"short prompts, 300 users", base:14964, now:1184, unit:"ms", lower:true},
+        {name:"Output throughput", sub:"short prompts, 300 users", base:2593, now:3328, unit:"tok/s", lower:false,
+         baseLabel:"Baseline peak"},
+        {name:"End to end", sub:"short prompts, 300 users", base:23.9, now:22.0, unit:"s", lower:true,
+         baseLabel:"320 seqs alone"},
+        {name:"Inter-token latency", sub:"short prompts, 300 users", base:87.5, now:81.8, unit:"ms", lower:true,
+         baseLabel:"320 seqs alone"}
+      ],
+      takeaway:"Best numbers in the study: <b>3,328 tok/s</b> and a <b>1.2 s</b> first token at 300 users. MTP also claws back some of the streaming cost."
+    },
+    {
+      n:6, color:"var(--s4)", title:"Then we checked long prompts", tag:"The catch", tagType:"plain",
+      line:"14,000 in, 5,000 out. The batch change does not transfer.",
+      cmpLabel:"MTP alone vs MTP with the raised limit",
+      table:{
+        head:["Users","MTP only (128)","MTP + 320 seqs"],
+        rows:[["8","1,116 tok/s","1,116 tok/s"],["32","2,138 tok/s","2,137 tok/s"],
+              ["128","2,533 tok/s","2,500 tok/s"],["300","2,461 tok/s","1,717 tok/s"]]
+      },
+      metrics:[
+        {name:"Inter-token latency", sub:"long prompts, 300 users", base:41.1, now:85.9, unit:"ms", lower:true,
+         baseLabel:"MTP only (128)", nowLabel:"MTP + 320"},
+        {name:"Requests completed", sub:"long prompts, 300 users, per 900 s", base:385, now:309, unit:"", lower:false,
+         baseLabel:"MTP only (128)", nowLabel:"MTP + 320"}
+      ],
+      takeaway:"Below 128 users the raised limit does nothing — identical numbers. At 300 users it <b>hurts</b>. Long prompts need the limit left at 128."
+    }
+  ]
+};
+// Benchmark output. null = not in the archived run output.
+window.ALLDATA = {
+  short:{ title:"Short prompts — 512 in / 256 out, 300 s per level", levels:[8,16,32,64,128,200,300],
+    series:{
+      A:{ttft:[397,null,null,null,1541,null,14964],ttftP95:[null,null,null,null,null,null,null],
+         itl:[null,null,null,null,null,null,null],gen:[553,null,null,null,2593,null,null],
+         e2e:[null,null,null,null,null,null,null],rps:[null,null,null,null,10.2,null,null],
+         comp:[null,null,null,null,null,null,null]},
+      B:{ttft:[170,null,null,null,513,null,14423],ttftP95:[null,null,null,null,null,null,null],
+         itl:[null,null,null,null,null,null,null],gen:[684,null,null,null,2751,null,null],
+         e2e:[null,null,null,null,null,null,null],rps:[null,null,null,null,null,null,null],
+         comp:[null,null,null,null,null,null,null]},
+      C:{ttft:[393,637.9,664.3,1127.9,1150,1563.1,1599.9],ttftP95:[404.4,645.3,1041,1534.7,2056.2,2085.4,4310.1],
+         itl:[12.8,15.5,21.9,29.1,44.3,61.4,87.5],gen:[553,888,1284,1898,2551,2901,3073],
+         e2e:[3.7,4.6,6.3,8.5,12.5,17.2,23.9],rps:[2.2,3.5,5,7.4,10,11.3,12],
+         comp:[649,1041,1505,2224,2990,3400,3601]},
+      D:{ttft:[166,172.2,281.9,387,541,823.1,1184.4],ttftP95:[295.2,414.6,482.3,694.9,1244.2,2023.2,4403.3],
+         itl:[10.7,15.4,21.9,30.7,42.8,65.2,81.8],gen:[699,989,1402,1992,2815,2827,3328],
+         e2e:[2.9,4.1,5.8,8.2,11.5,17.5,22],rps:[2.7,3.9,5.5,7.8,11,11,13],
+         comp:[819,1159,1643,2334,3299,3313,3900]}
+    }},
+  long:{ title:"Long prompts — 14,000 in / 5,000 out, 900 s per level", levels:[8,32,128,300],
+    series:{
+      A:{ttft:[3256.7,3276.6,3345.4,298940.8],ttftP95:[3866.2,19517.4,95708.8,513838.5],
+         itl:[12.4,21.6,50.9,50.5],gen:[582,1261,2136,2136],e2e:[65.4,113.7,258.1,551.6],
+         rps:[0.2,0.3,0.4,0.4],comp:[105,227,385,385]},
+      B:{ttft:[1060,2250,5560,260000],ttftP95:[null,null,97000,null],
+         itl:[6.7,13.6,40.6,41.1],gen:[1116,2138,2533,2461],e2e:[34.7,70.3,210,465],
+         rps:[null,null,null,null],comp:[null,385,385,385]},
+      C:{ttft:[null,null,null,null],ttftP95:[null,null,null,null],itl:[null,null,null,null],
+         gen:[null,null,null,null],e2e:[null,null,null,null],rps:[null,null,null,null],
+         comp:[null,null,null,null]},
+      D:{ttft:[1059.6,2407.9,7328.1,134728.5],ttftP95:[2455,12617.4,97509.8,276752.2],
+         itl:[6.7,13.6,40.8,85.9],gen:[1116,2137,2500,1717],e2e:[34.8,70.6,212.2,565.1],
+         rps:[0.2,0.4,0.5,0.3],comp:[201,385,450,309]}
+    }}
+};
+</script>
+<script>
+(function(){
+  "use strict";
+  var S = window.STORY, D = window.ALLDATA;
+
+  /* theme */
+  var btn=document.getElementById("themeBtn");
+  function dark(){return document.documentElement.getAttribute("data-theme")==="dark"}
+  function setTheme(d){document.documentElement.setAttribute("data-theme",d?"dark":"light");
+    btn.textContent=d?"Light":"Dark";try{localStorage.setItem("nemo2",d?"dark":"light")}catch(e){}}
+  (function(){var v=null;try{v=localStorage.getItem("nemo2")}catch(e){}
+    var sys=false;try{sys=matchMedia("(prefers-color-scheme: dark)").matches}catch(e){}
+    setTheme(v?v==="dark":sys)})();
+  btn.addEventListener("click",function(){setTheme(!dark())});
+
+  function comma(n){return n.toLocaleString("en-US")}
+  function fmt(v,u){
+    if(v===null||v===undefined)return "—";
+    var s = v>=1000 ? comma(Math.round(v)) : (v%1?v.toFixed(1):String(v));
+    return s + (u?" "+u:"");
+  }
+  function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+
+  /* hero */
+  document.getElementById("hero").innerHTML = S.hero.map(function(h){
+    return '<div class="hs"><div class="k">'+h.k+'</div><div class="v">'+h.v+
+      (h.u?'<small>'+h.u+'</small>':'')+'</div><div class="d">'+h.d+
+      (h.good?' &middot; <b>'+h.good+'</b>':'')+'</div></div>';
+  }).join("");
+
+  /* metric comparison rows */
+  function mrow(m,color){
+    var max=Math.max(m.base,m.now)||1;
+    var pctBase=Math.max(2,m.base/max*100), pctNow=Math.max(2,m.now/max*100);
+    var change=(m.now-m.base)/m.base*100;
+    var better = m.lower ? m.now<m.base : m.now>m.base;
+    var cls = Math.abs(change)<1 ? "flat" : (better?"up":"dn");
+    var sign = change>0?"+":"−";
+    var txt = Math.abs(change)<1 ? "no change" : sign+Math.abs(change).toFixed(0)+"%";
+    return '<div class="mrow">'+
+      '<div class="mhead"><div class="mname">'+m.name+' <span>'+m.sub+'</span></div>'+
+      '<div class="mdelta '+cls+'">'+txt+'</div></div>'+
+      '<div class="bar"><div class="who">'+(m.baseLabel||"Baseline")+'</div>'+
+        '<div class="track"><div class="fill" style="width:'+pctBase.toFixed(1)+'%;background:var(--s1)"></div></div>'+
+        '<div class="num">'+fmt(m.base,m.unit)+'</div></div>'+
+      '<div class="bar"><div class="who">'+(m.nowLabel||"This step")+'</div>'+
+        '<div class="track"><div class="fill" style="width:'+pctNow.toFixed(1)+'%;background:'+color+'"></div></div>'+
+        '<div class="num">'+fmt(m.now,m.unit)+'</div></div>'+
+    '</div>';
+  }
+
+  function flagrow(f){
+    var v = f.was
+      ? '<span class="was">'+f.was+'</span> <span class="arrow">&rarr;</span> <span class="now">'+f.now+'</span>'
+      : '<span class="now">'+f.now+'</span>';
+    return '<div class="flag'+(f.same?" same":"")+'"><code>'+f.f+'</code>'+v+
+           '<span class="why">'+f.why+'</span></div>';
+  }
+
+  function tablehtml(t){
+    var h='<div class="tscroll"><table><thead><tr>';
+    t.head.forEach(function(c,i){h+='<th'+(i?' class="n"':'')+'>'+c+'</th>'});
+    h+='</tr></thead><tbody>';
+    t.rows.forEach(function(r){
+      h+='<tr'+(t.mark?' class="same"':'')+'>';
+      r.forEach(function(c,i){h+= i? '<td class="n">'+c+'</td>' : '<th class="n">'+c+'</th>'});
+      h+='</tr>';
+    });
+    return h+'</tbody></table></div>';
+  }
+
+  /* steps */
+  document.getElementById("steps").innerHTML = S.steps.map(function(st,i){
+    var b="";
+    if(st.flags){ b+='<div class="lbl">Config</div><div class="flags">'+
+                     st.flags.map(flagrow).join("")+'</div>'; }
+    if(st.metrics){ b+='<div class="lbl">'+(st.cmpLabel||"Against the baseline")+'</div><div class="mrows">'+
+                       st.metrics.map(function(m){return mrow(m,st.color)}).join("")+'</div>'; }
+    if(st.table){ b+='<div class="lbl">Measured</div>'+tablehtml(st.table); }
+    b+='<div class="takeaway"><div class="tk">'+st.takeaway+'</div></div>';
+
+    return '<div class="step'+(i===0?" on":"")+'" style="--nc:'+st.color+'">'+
+      '<div class="node">'+st.n+'</div>'+
+      '<button class="sumbtn" type="button" aria-expanded="'+(i===0)+'">'+
+        '<div class="sumtxt"><div class="sumtitle">'+st.title+
+          '<span class="tag '+(st.tagType==="chg"?"chg":"")+'">'+st.tag+'</span></div>'+
+          '<div class="sumline">'+st.line+'</div></div>'+
+        '<svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">'+
+          '<path d="M7.5 4.5 13 10l-5.5 5.5" stroke="currentColor" stroke-width="2" '+
+          'stroke-linecap="round" stroke-linejoin="round"/></svg>'+
+      '</button><div class="body">'+b+'</div></div>';
+  }).join("");
+
+  document.getElementById("steps").addEventListener("click",function(ev){
+    var btn=ev.target.closest(".sumbtn"); if(!btn)return;
+    var step=btn.closest(".step"), open=step.classList.toggle("on");
+    btn.setAttribute("aria-expanded",open);
+  });
+
+  /* all measurements */
+  var MET=[["ttft","First token (median)","ms"],["ttftP95","First token (p95)","ms"],
+           ["itl","Inter-token","ms"],["gen","Output","tok/s"],["e2e","End to end","s"],
+           ["rps","Requests/s",""],["comp","Completed",""]];
+  var CFG=[["A","Baseline (128 seqs)","--s1"],["B","MTP k=2 (128 seqs)","--s2"],
+           ["C","320 seqs","--s3"],["D","320 seqs + MTP k=2","--s4"]];
+  var out="";
+  ["short","long"].forEach(function(sk){
+    var sh=D[sk];
+    out+='<h4>'+sh.title+'</h4><div class="tscroll"><table><thead><tr><th>Config</th><th class="n">Users</th>';
+    MET.forEach(function(m){out+='<th class="n">'+m[1]+'</th>'});
+    out+='</tr></thead><tbody>';
+    CFG.forEach(function(c){
+      var ser=sh.series[c[0]];
+      var any=MET.some(function(m){return (ser[m[0]]||[]).some(function(v){return v!=null})});
+      if(!any){ out+='<tr><th><span style="display:inline-block;width:9px;height:9px;border-radius:2px;'+
+        'margin-right:7px;background:var('+c[2]+')"></span>'+c[1]+'</th><td class="na" colspan="'+
+        (MET.length+1)+'">not run</td></tr>'; return; }
+      sh.levels.forEach(function(lv,i){
+        out+='<tr>'+(i===0?'<th rowspan="'+sh.levels.length+'">'+
+          '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;'+
+          'background:var('+c[2]+')"></span>'+c[1]+'</th>':'')+'<td class="n">'+lv+'</td>';
+        MET.forEach(function(m){
+          var v=(ser[m[0]]||[])[i];
+          out+= v==null ? '<td class="n na">—</td>'
+                        : '<td class="n">'+fmt(v,m[2])+'</td>';
+        });
+        out+='</tr>';
+      });
+    });
+    out+='</tbody></table></div>';
+  });
+  out+='<h4>Common flags, all four configurations</h4><pre><code>'+esc(
+"--tensor-parallel-size 8  --trust-remote-code\n"+
+"--max-model-len 64000  --max-num-batched-tokens 8192\n"+
+"--gpu-memory-utilization 0.9\n"+
+"--disable-cascade-attn  --enable-expert-parallel\n"+
+"--enable-chunked-prefill  --enable-prefix-caching\n"+
+"--reasoning-parser nemotron_v3\n"+
+"--enable-auto-tool-choice  --tool-call-parser qwen3_coder\n"+
+"--mamba-ssm-cache-dtype float16  --mamba-backend flashinfer\n"+
+"--enable-mamba-cache-stochastic-rounding  --mamba-cache-philox-rounds 5\n"+
+"--kv-cache-dtype fp8")+'</code></pre>';
+  out+='<h4>How it was measured</h4><pre><code>'+esc(
+"guidellm run \\\n"+
+"  --backend kind=openai_http,target=http://127.0.0.1:8000 \\\n"+
+"  --data kind=synthetic_text,prompt_tokens=512,output_tokens=256 \\\n"+
+"  --profile kind=concurrent,streams=8 \\\n"+
+"  --override 'profile.streams' 8,16,32,64,128,200,300 \\\n"+
+"  --constraint kind=max_duration,seconds=300 \\\n"+
+"  --output kind=json,path=./short.json\n\n"+
+"# long shape: prompt_tokens=14000, output_tokens=5000,\n"+
+"#             streams 8,32,128,300, seconds=900")+'</code></pre>';
+  document.getElementById("allData").innerHTML=out;
+})();
+</script>
+</body>
+</html>
